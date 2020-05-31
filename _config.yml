@@ -1,5 +1,5 @@
 title: SH4NNU
-subtitle: My personal blog.
+subtitle: Computer Science Undergrad | OSS | Operating Systems | Compilers | Foodie
 description: >- # this means to ignore newlines until "baseurl:"
   This is a place where I express my views and share knowledge with you.
 
@@ -21,44 +21,52 @@ urls:
 
 author_logo: profile.png
 author: Manikishan Ghantasala
-author_bio: Hi, my name is John Doe. I built this site using devlopr-jekyll :D
+author_bio: Hello. I'm Manikishan, a CS undergrad from Amrita Vishwa Vidyapeetham , Kollam, Kerala. I am a passionate developer and an artist, in a tireless endeavor to seek knowledge. I love to build and examine the internals of softwares, draw portraits, and watch anime. This blog is a place where I scribble my thoughts and share my knowledge and experience with the world of wonderful readers like you. 
 author_email: "manikishanghantasala@gmail.com"
 author_location: India
 author_website_url: "http://sh4nnu.codes"
-typewrite-text: devlopr is a jekyll theme built for developers. You can edit this in _config.yml file
+typewrite-text: An OSS developer. Love to know how things really work ;)
 
 author_work_experiences:
-            - company_name: Google
-              company_logo: google.png
-              company_url: https://google.com
-              designation: Software Engineer
-              description: Worked on various Google Products
-              visibility: true
-            - company_name: Microsoft
-              company_logo: microsoft.png
-              company_url: https://microsoft.com
-              designation: Azure Developer
-              description: Worked on various Azure Cloud Products
+            - company_name: NetBSD
+              company_logo: NETBSD-logo.png
+              company_url: https://summerofcode.withgoogle.com/archive/2019/organizations/6058884492427264/
+              designation: Google Summer of Code’19 - Developer Intern
+              description: Added a KNF (NetBSD style) configuration for clang-format and added support to format according to NetBSD Kernel coding styles.
               visibility: true
 
-author_education_details:
-              - college_logo: mit.png
-                college_name: MIT
-                college_url: https://mit.org
-                college_degree: CS Engineer
-                description: Bachelor of Technology
+author_certification_details:
+              - certificate_logo: cert.jpg
+                certificate_name: Build a Modern Computer from First Principles - From Nand to Tetris (Project-Centered Course)
+                certificate_url: https://www.coursera.org/account/accomplishments/certificate/HQT2CTMC4D5F
+                certificate_degree: Nand2Tetris
+                description: Hebrew University of Jerusalem   -- Sept 2018
                 visibility: true
 
+              - certificate_logo: cert.jpg
+                certificate_name: A specialisation of three courses on courrent, parallel and distributed programming.
+                certificate_url: https://www.coursera.org/account/accomplishments/specialization/certificate/DQUT2AGRUL4K
+                certificate_degree: Parallel-Concurrent-Dirstributed programming specialisation
+                description: Rice University   -- Apr 2020
+                visibility: true
+
+              - certificate_logo: cert.jpg
+                certificate_name: A introduction course to Front-End Web development, with HTML, CSS and JQuery.
+                certificate_url: https://classroom.udacity.com/courses/ud304-in
+                certificate_degree: Google India Challenge Scholarship - Front-End Web Dev
+                description: Udacity   -- 2017
+                visibility: true
+              
 author_project_details:
-              - project_thumbnail: gamershub.png
-                project_title: Gamers Hub
-                project_description: A Platform built for Gamers and Game Devs
-                project_url: https://gamershub.in
+              - project_thumbnail: NAND_ANSI.svg
+                project_title: Nand2Tetris
+                project_description: Built a basic 16-bit CPU with a language similar to VHDL, and built a compiler, OS that run on the virtual CPU over which you can play a Tetris game written in a custom made programming language.
+                project_url: http://github.com/sh4nnu/nand2tetris
                 visibility: true
-              - project_thumbnail: hack4r.PNG
-                project_title: Hack4r
-                project_description: A Platform built for Hackers and Penetration Testers
-                project_url: https://hack4r.com
+              - project_thumbnail: pixel-art.png
+                project_title: Pixel Art Maker
+                project_description: A 8-bit graphic creation tool made by JQuery, HTML and CSS.
+                # project_url: https://hack4r.com
                 visibility: true
 
 # social links
@@ -91,7 +99,7 @@ google_analytics: UA-46783401-10
 
 # Choose what to show ( can be true or false)
 show_author_work_experiences: true
-show_author_education_details: true
+show_author_certification_details: true
 show_author_project_details: true
 
 # algolia search
@@ -144,7 +152,6 @@ plugins:
   - jekyll-sitemap
   - jekyll-algolia
   - jekyll-menus
-
 
 # Exclude from processing.
 # The following items will not be processed, by default.
