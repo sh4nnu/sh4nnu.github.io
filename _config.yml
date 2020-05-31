@@ -24,7 +24,7 @@ author: Manikishan Ghantasala
 author_bio: Hi, my name is John Doe. I built this site using devlopr-jekyll :D
 author_email: "manikishanghantasala@gmail.com"
 author_location: India
-author_website_url: "http://johndoe.com"
+author_website_url: "http://sh4nnu.codes"
 typewrite-text: devlopr is a jekyll theme built for developers. You can edit this in _config.yml file
 
 author_work_experiences:
@@ -74,11 +74,10 @@ telegram_username: manikishan
 hyvor_talk_website_id: 753
 
 # wakatime username (coding activity)
-wakatime_username: 
+wakatime_username: sh4nnu
 
 # mailchimp embedded form url (newsletter):
-#mailchimp_form_url: https://sujaykundu.us10.list-manage.com/subscribe/post?u=50bab1c85eae24ecfb0f68361&amp;id=3a2dd721d0
-
+#
 # formspree (contact form)
 formspree_email: manikishanghantasala@gmail.com
 
