@@ -1,10 +1,16 @@
 ---
+layout: post
+summary: 
+author: Shannu
+category: 
+    - Mozilla
+    - OSS
 title: "Getting Started with Mozilla."
 date: "2018-06-12"
-coverImage: "m.png"
+thumbnail: /assets/img/posts/m.png
 ---
 
-![mozilla](images/mozilla.png)
+![mozilla](/assets/img/posts/mozilla.png)
 
 Hello readers, I would like to share my experience while contributing to the Mozilla the Open Source organization. Mozilla is very broad organization and developers in the organization are very helpful. I am inspired by the commitment of the developers I can surely say Mozilla is one of the best places where all the people around us help to develop our skills and help when we were struck anywhere.
 
@@ -51,7 +57,7 @@ For contributing to any organization you need to get access to the developer com
 
 Most of the discussion in the community takes place in the IRC. You can ask for guidance and help during the build or fixing an error/bug in the IRC. I prefer the IRC client [IRCCLOUD](https://www.irccloud.com/) for chatting in the IRC. Follow this [documentation](https://wiki.mozilla.org/IRC) to know how to use IRC. Some of the important channel names which may help you in the beginning are
 
-_`#introduction, #build, #coding, #newbies, #qa` _ these channels will help you by providing support and help.
+`#introduction, #build, #coding, #newbies, #qa` these channels will help you by providing support and help.
 
 ## Getting the source code:
 
