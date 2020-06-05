@@ -7,6 +7,7 @@ category:
     - OSS
     - Linux
 thumbnail: /assets/img/posts/linux_wrap.jpg
+summary: Introduction to Linux and why one should consider using it.
 ---
 
 Linux is a Free and Open-source Operating System which is similar to Windows, macOS, Android, IOS on your PC, Mac, MacBook and mobile phones. Before knowing about Linux, let me answer the question.
@@ -68,24 +69,24 @@ These are some reasons why one should use Linux:
 
 - **Linux is free of charge and the user has every right on the OS Source code**
 
-- Linux distros will give full access to change or update it’s source code to it’s users. Because of which you can configure your OS according to your will, and the way you want it to be.
-- You can customize your OS the way you want to it to look like.
+	- Linux distros will give full access to change or update it’s source code to it’s users. Because of which you can configure your OS according to your will, and the way you want it to be.
+	- You can customize your OS the way you want to it to look like.
 - **Enterprise Linux**
     - Some Linux distros like Red Hat are paid and used by many enterprises because, it is stable, supported and certified by many developers. When your systems in your business crashes. Red Hat gives you services for fixing them up and make your work more safe and less loss.
 
 - **Linux is the most secure server in the world**
 
-- - - Almost every server in this world presently runs on Linux, it is secure and fast as well. One of the best advantages is you need not spend lots of money on antivirus software to secure your servers or PCs.
-        - Linux also has the best and strong community with millions of developers working together every single day to bring new features and improve security. You cannot see such an active and strong community for any other Operating System.
+	- Almost every server in this world presently runs on Linux, it is secure and fast as well. One of the best advantages is you need not spend lots of money on antivirus software to secure your servers or PCs.
+	- Linux also has the best and strong community with millions of developers working together every single day to bring new features and improve security. You cannot see such an active and strong community for any other Operating System.
 
 - **Working with Linux is faster and easier**
 
-- - - In Linux, most of the work is done by terminal so most of the time is saved working with mouse clicks and you can even access, delete, execute single/multiple files with single lined commands.
-        - You can customize your OS packages their versions and packages depending on the work you do.
+	- In Linux, most of the work is done by terminal so most of the time is saved working with mouse clicks and you can even access, delete, execute single/multiple files with single lined commands.
+	- You can customize your OS packages their versions and packages depending on the work you do.
 
 - **Linux is compatible with any hardware**
 
-- - You need not worry whether the hardware of your computer supports Linux or not? Because Linux works on any hardware from 1GB RAM to 16GB RAM and any architecture.
+	- You need not worry whether the hardware of your computer supports Linux or not? Because Linux works on any hardware from 1GB RAM to 16GB RAM and any architecture.
 
 With all these knowledge I conclude Linux is an Operating System which works as you need it to be. Every Linux is your own OS with some unique characteristics and some differences from other.
 

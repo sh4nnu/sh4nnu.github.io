@@ -6,6 +6,7 @@ author: Shannu
 category: 
     - Non-Tech
     - India
+thumbnail: /assets/img/posts/indiaflag.jpg
 ---
 
 Every member of a family have to know about the greatness of their family and feel proud to be a part of the family. In the same way, we Indians should know about our first home, the first family **INDIA** and it's our duty to know about our nation and say out proudly "I am an Indian".
