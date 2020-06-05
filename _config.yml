@@ -94,6 +94,8 @@ markdown: kramdown
 highlighter: rouge
 permalink: pretty
 
+kramdown:
+  input: GFM
 # google analytics
 google_analytics: UA-123712899-2
 

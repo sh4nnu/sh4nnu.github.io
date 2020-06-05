@@ -8,6 +8,8 @@ category:
     - BSD
     - Scheduling
     - Unix
+thumbnail: /assets/img/posts/netbsd-1.png
+
 ---
 
 ## INTRODUCTION

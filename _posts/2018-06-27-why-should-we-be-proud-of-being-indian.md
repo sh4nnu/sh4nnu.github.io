@@ -1,6 +1,11 @@
 ---
 title: "Why should we be proud of being Indian?"
 date: "2018-06-27"
+layout: post
+author: Shannu
+category: 
+    - Non-Tech
+    - India
 ---
 
 Every member of a family have to know about the greatness of their family and feel proud to be a part of the family. In the same way, we Indians should know about our first home, the first family **INDIA** and it's our duty to know about our nation and say out proudly "I am an Indian".

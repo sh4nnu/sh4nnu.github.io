@@ -1,7 +1,12 @@
 ---
 title: "What is Linux? and why?"
 date: "2018-08-11"
-coverImage: "linux_wrap.jpg"
+layout: post
+author: Shannu
+category: 
+    - OSS
+    - Linux
+thumbnail: /assets/img/posts/linux_wrap.jpg
 ---
 
 Linux is a Free and Open-source Operating System which is similar to Windows, macOS, Android, IOS on your PC, Mac, MacBook and mobile phones. Before knowing about Linux, let me answer the question.
@@ -12,7 +17,7 @@ In simpler words,
 
 An Operating System is a software that sits beneath all other software and applications in the computer, receiving requests from these applications above continuously and assign tasks to the Hardware accordingly. As shown in the illustration below
 
-![](images/os_cartoon.jpg)
+![](/assets/img/posts/os_cartoon.jpg){:class="img-fluid"}
 
 As you see here OS is the master of your computer who controls all that is going on the Computer. Linux is one such Operating System.
 
@@ -22,7 +27,7 @@ What does the word "Linux" mean? Well, Linux refers to the Linux kernel, the cor
 
 > "A **Linux distribution** (often abbreviated as **distro**) is an operating system made from a software collection, which is based upon the **Linux** kernel and, often, a package management system. The software is usually adapted to the **distrib****ution** and then packaged into software packages by the **distribution's** maintainers" -- wikipaedia
 
-![package.jpg](images/package-e1534021057100.jpg)To know how much vast the Linux network is, check this timeline of some Linux distros used around the world and their origin -- [Linux\_distro\_TimeLine](https://en.wikipedia.org/wiki/Linux_distribution#/media/File:Linux_Distribution_Timeline.svg).
+![package.jpg](/assets/img/posts/package-e1534021057100.jpg){:class="img-fluid"} To know how much vast the Linux network is, check this timeline of some Linux distros used around the world and their origin -- [Linux\_distro\_TimeLine](https://en.wikipedia.org/wiki/Linux_distribution#/media/File:Linux_Distribution_Timeline.svg).
 
 **SOME POPULAR LINUX DISTROS:**
 
@@ -37,7 +42,7 @@ What does the word "Linux" mean? Well, Linux refers to the Linux kernel, the cor
 
 Assume an Operating System as a nut, Kernel as the softer and edible internal part of the nut(OS).
 
-![Untitled drawing.png](images/untitled-drawing.png)
+![Untitled drawing.png](/assets/img/posts/untitled-drawing.png){:class="img-fluid"}
 
 Here the Operating system is the nutshell which has all the software packages and contains kernel (the inner seed) inside it. So the kernel is the part of Operating System. The **Operating System** is the software package that communicates directly with the hardware and the applications we use over the OS. A kernel is the core part of an Operating System which communicates with the hardware, and also it is also a  part of OS responsible for translating a command given by us humans, into something that can be understood by the computer( the CPU).
 
@@ -63,8 +68,8 @@ These are some reasons why one should use Linux:
 
 - **Linux is free of charge and the user has every right on the OS Source code**
 
-- - - Linux distros will give full access to change or update it’s source code to it’s users. Because of which you can configure your OS according to your will, and the way you want it to be.
-        - You can customize your OS the way you want to it to look like.
+- Linux distros will give full access to change or update it’s source code to it’s users. Because of which you can configure your OS according to your will, and the way you want it to be.
+- You can customize your OS the way you want to it to look like.
 - **Enterprise Linux**
     - Some Linux distros like Red Hat are paid and used by many enterprises because, it is stable, supported and certified by many developers. When your systems in your business crashes. Red Hat gives you services for fixing them up and make your work more safe and less loss.
 
