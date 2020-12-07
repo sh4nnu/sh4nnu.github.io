@@ -59,6 +59,11 @@ author_certification_details:
                 visibility: true
               
 author_project_details:
+              - project_thumbnail: consistency.gif
+                project_title: Dynamic consistency model in distributed systems
+                project_description: New and dynamic consistency model for distributed databases that changes the strictness based upon the load and connection
+                project_url: 
+                visibility: true
               - project_thumbnail: NAND_ANSI.svg
                 project_title: Nand2Tetris
                 project_description: Built a basic 16-bit CPU with a language similar to VHDL, and built a compiler, OS that run on the virtual CPU over which you can play a Tetris game written in a custom made programming language.
@@ -83,7 +88,7 @@ disqus_shortname: sh4nnu-1
 #hyvor_talk_website_id: 753
 
 # wakatime username (coding activity)
-wakatime_username: sh4nnu
+wakatime_username: 
 
 # mailchimp embedded form url (newsletter):
 #
