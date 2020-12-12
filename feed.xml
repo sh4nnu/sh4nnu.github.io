@@ -1,0 +1,640 @@
+<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="https://jekyllrb.com/" version="4.0.1">Jekyll</generator><link href="/feed.xml" rel="self" type="application/atom+xml" /><link href="/" rel="alternate" type="text/html" /><updated>2020-12-12T08:25:38+00:00</updated><id>/feed.xml</id><title type="html">SH4NNU</title><subtitle>This is a place where I express my views and share knowledge with you.</subtitle><author><name>Manikishan Ghantasala</name></author><entry><title type="html">Scheduling in NetBSD - Part 1</title><link href="/bsd/scheduling/unix/2020/05/10/scheduling-in-netbsd-part-1/" rel="alternate" type="text/html" title="Scheduling in NetBSD - Part 1" /><published>2020-05-10T00:00:00+00:00</published><updated>2020-05-10T00:00:00+00:00</updated><id>/bsd/scheduling/unix/2020/05/10/scheduling-in-netbsd-part-1</id><content type="html" xml:base="/bsd/scheduling/unix/2020/05/10/scheduling-in-netbsd-part-1/">&lt;h2 id=&quot;introduction&quot;&gt;INTRODUCTION&lt;/h2&gt;
+
+&lt;p&gt;In this blog, we will discuss about the &lt;strong&gt;4.4BSD Thread scheduler&lt;/strong&gt; one of the two schedulers in NetBSD and a few OS APIs that can be used to control the schedulers and get information while executing. &lt;/p&gt;
+
+&lt;h2 id=&quot;few-basics&quot;&gt;Few basics&lt;/h2&gt;
+
+&lt;h3 id=&quot;what-is-a-scheduler&quot;&gt;What is a scheduler? &lt;/h3&gt;
+
+&lt;p&gt;A Process Scheduler schedules the processes of different states namely ready, waiting, and running. There are different scheduling algorithms like :&lt;/p&gt;
+
+&lt;ol&gt;
+  &lt;li&gt;Shortest Job first&lt;/li&gt;
+  &lt;li&gt;First Come First Serve&lt;/li&gt;
+  &lt;li&gt;Shortest Remaining time first&lt;/li&gt;
+  &lt;li&gt;Priority scheduling&lt;/li&gt;
+  &lt;li&gt;Round robin &lt;/li&gt;
+  &lt;li&gt;Multi-level queue scheduling etc.,&lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;p&gt;These algorithms are either &lt;strong&gt;non-preemptive&lt;/strong&gt; or &lt;strong&gt;preemptive&lt;/strong&gt;. In preemptive scheduling is based on priority where a scheduler may preempt a low priority running process anytime when a high priority process enters into a ready state, whereas in non-preemptive scheduling once a process enters running state it cannot be preempted until it completes its allotted time.&lt;/p&gt;
+
+&lt;h2 id=&quot;netbsds-internals&quot;&gt;NetBSD’s internals&lt;/h2&gt;
+
+&lt;p&gt;Before going into the schedulers in NetBSD lets learn about few internals of NetBSD.&lt;/p&gt;
+
+&lt;h3 id=&quot;processes&quot;&gt;Processes:&lt;/h3&gt;
+
+&lt;p&gt;NetBSD supports traditional processes created by &lt;em&gt;fork()&lt;/em&gt; and native POSIX threads (&lt;em&gt;pthreads&lt;/em&gt;). The threads are implemented with a &lt;strong&gt;1:1 threading model&lt;/strong&gt; where each user thread (&lt;em&gt;pthread&lt;/em&gt;) has a kernel thread called a light-weight process (&lt;em&gt;LWP&lt;/em&gt;). So, Inside the kernel, both processes and threads are implemented as LWPs and are served the same by the scheduler. &lt;/p&gt;
+
+&lt;h3 id=&quot;scheduling-classes&quot;&gt;Scheduling classes:&lt;/h3&gt;
+
+&lt;p&gt;According to the POSIX standard, at least the following three scheduling policies (classes) should be provided to support the POSIX real-time scheduling extensions: &lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt; &lt;strong&gt;SCHED OTHER&lt;/strong&gt;: Time-sharing (TS) scheduling policy, the default policy in NetBSD.&lt;/li&gt;
+  &lt;li&gt; &lt;strong&gt;SCHED FIFO&lt;/strong&gt;: First in, first-out (FIFO) scheduling policy. *&lt;/li&gt;
+  &lt;li&gt;&lt;strong&gt;SCHED RR&lt;/strong&gt;: Round-robin scheduling policy.  *&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;(* - strictly provided by the standard.)&lt;/p&gt;
+
+&lt;h3 id=&quot;csf&quot;&gt;CSF:&lt;/h3&gt;
+
+&lt;p&gt;CFS is  a  Common Scheduler Framework which was introduced in NetBSD 5.0. It provides an Interface for implementing different thread scheduling algorithms and one among those schedulers can be selected at compile-time.  Currently, there are 2 schedulers available, they are&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;&lt;strong&gt;4.4BSD thread scheduler&lt;/strong&gt;: The traditional BSD’s scheduler.&lt;/li&gt;
+  &lt;li&gt; &lt;strong&gt;M2 scheduler&lt;/strong&gt;: A more advanced thread scheduler.&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;h2 id=&quot;controlling-the-scheduling-of-processes-and-threads&quot;&gt;Controlling the scheduling of processes and threads&lt;/h2&gt;
+
+&lt;p&gt;NetBSD provides utilities to control and change scheduling policies and &lt;a href=&quot;https://computing.llnl.gov/tutorials/openMP/ProcessThreadAffinity.pdf&quot;&gt;thread affinity&lt;/a&gt;. We are going to see about &lt;strong&gt;schedctl&lt;/strong&gt; and &lt;strong&gt;cpuctl&lt;/strong&gt; in detail.&lt;/p&gt;
+
+&lt;h3 id=&quot;schedctl&quot;&gt;&lt;strong&gt;Schedctl&lt;/strong&gt;&lt;/h3&gt;
+
+&lt;p&gt;The schedctl command can be used to control the scheduling of processes and threads.  It also returns information about the current scheduling parameters of the process or thread. This enables us to monitor and control scheduling in NetBSD, including changing the priority , affinity, scheduler’s - policy. Etc,&lt;/p&gt;
+
+&lt;p&gt;1. We can see the scheduling information of a process by it’s PID.&lt;/p&gt;
+
+&lt;figure class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-bash&quot; data-lang=&quot;bash&quot;&gt;&lt;span class=&quot;c&quot;&gt;#schedctl -p 18467&lt;/span&gt;
+  LID:              1
+  Priority:         43
+  Class:            SCHED_OTHER
+  Affinity &lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;CPUs&lt;span class=&quot;o&quot;&gt;)&lt;/span&gt;:  &amp;lt;none&amp;gt;&lt;/code&gt;&lt;/pre&gt;&lt;/figure&gt;
+
+&lt;p&gt;The ‘&lt;strong&gt;Class&lt;/strong&gt;’ in the above prompt refers to the scheduling policy the process is being scheduled with. We have 3 scheduling policies  SCHED_OTHER, SCHED_FIFO,SCHED_RR   &lt;/p&gt;
+
+&lt;p&gt;2. We can change the scheduling policy for a process or a command.&lt;/p&gt;
+
+&lt;figure class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-bash&quot; data-lang=&quot;bash&quot;&gt;    # schedctl &lt;span class=&quot;nt&quot;&gt;-C&lt;/span&gt; SCHED_FIFO top&lt;/code&gt;&lt;/pre&gt;&lt;/figure&gt;
+
+&lt;p&gt;And the &lt;code class=&quot;highlighter-rouge&quot;&gt;top&lt;/code&gt; runs with FIFO policy whenever called.&lt;/p&gt;
+
+&lt;h3 id=&quot;cpuctl&quot;&gt;&lt;strong&gt;Cpuctl&lt;/strong&gt;&lt;/h3&gt;
+
+&lt;p&gt;This can be used to control the CPU of the Computer. We can perform several operations like sending a cpu offline and bringing it back online, setting microcode and listing available cpus. Let’s see some examples.&lt;/p&gt;
+
+&lt;p&gt;1. This argument &lt;code class=&quot;highlighter-rouge&quot;&gt;list&lt;/code&gt; can be used to see the available CPUs and their status. &lt;/p&gt;
+
+&lt;figure class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-bash&quot; data-lang=&quot;bash&quot;&gt;&lt;span class=&quot;nv&quot;&gt;$ &lt;/span&gt;cpuctl list
+Num  HwId Unbound LWPs Interrupts Last change               Intr
+&lt;span class=&quot;nt&quot;&gt;----&lt;/span&gt; &lt;span class=&quot;nt&quot;&gt;----&lt;/span&gt; &lt;span class=&quot;nt&quot;&gt;------------&lt;/span&gt; &lt;span class=&quot;nt&quot;&gt;----------&lt;/span&gt; &lt;span class=&quot;nt&quot;&gt;------------------------&lt;/span&gt; &lt;span class=&quot;nt&quot;&gt;--------&lt;/span&gt;
+0    0    online       intr       Tue Apr  7 23:17:32 2020 8
+1    1    online       intr       Tue Apr  7 23:17:32 2020 0&lt;/code&gt;&lt;/pre&gt;&lt;/figure&gt;
+
+&lt;p&gt;2. We can see specific information regarding a cpu. It provides a lot of information, only a few interesting stats are mentioned here. &lt;/p&gt;
+
+&lt;figure class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-bash&quot; data-lang=&quot;bash&quot;&gt;&lt;span class=&quot;nv&quot;&gt;$ &lt;/span&gt;cpuctl identify 0
+
+cpu0: highest basic info 00000016
+cpu0: highest hypervisor info 00000000
+cpu0: highest extended info 80000008
+cpu0: Running on hypervisor: unknown
+cpu0: &lt;span class=&quot;s2&quot;&gt;&quot;Intel(R) Core(TM) i5-8259U CPU @ 2.30GHz&quot;&lt;/span&gt;
+cpu0: Intel 7th or 8th gen Core &lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;Kaby Lake, Coffee Lake&lt;span class=&quot;o&quot;&gt;)&lt;/span&gt; or Xeon E &lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;Coffee Lake&lt;span class=&quot;o&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;686-class&lt;span class=&quot;o&quot;&gt;)&lt;/span&gt;, 2304.00 MHz
+cpu0: L2 cache 256KB 64B/line 4-way
+cpu0: L3 cache 6MB 64B/line 12-way
+cpu0: 64B prefetching
+cpu0: L1 1GB page DTLB 4 1GB entries 4-way&lt;/code&gt;&lt;/pre&gt;&lt;/figure&gt;
+
+&lt;p&gt;3. We can send specific CPUs offline and online.&lt;/p&gt;
+
+&lt;figure class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-bash&quot; data-lang=&quot;bash&quot;&gt;&lt;span class=&quot;nv&quot;&gt;$ &lt;/span&gt;cpuctl offline 1
+
+&lt;span class=&quot;nv&quot;&gt;$ &lt;/span&gt;cpuctl list
+Num  HwId Unbound LWPs Interrupts Last change               Intr
+&lt;span class=&quot;nt&quot;&gt;----&lt;/span&gt; &lt;span class=&quot;nt&quot;&gt;----&lt;/span&gt; &lt;span class=&quot;nt&quot;&gt;------------&lt;/span&gt; &lt;span class=&quot;nt&quot;&gt;----------&lt;/span&gt; &lt;span class=&quot;nt&quot;&gt;------------------------&lt;/span&gt; &lt;span class=&quot;nt&quot;&gt;-------&lt;/span&gt;
+0    0    online       intr       Tue Apr  7 23:17:32 2020 8
+1    1    offline      intr       Wed Apr  8 03:27:12 2020 0
+
+&lt;span class=&quot;nv&quot;&gt;$ &lt;/span&gt;cpuctl online 1
+
+&lt;span class=&quot;nv&quot;&gt;$ &lt;/span&gt;cpuctl list
+Num  HwId Unbound LWPs Interrupts Last change               Intr
+&lt;span class=&quot;nt&quot;&gt;----&lt;/span&gt; &lt;span class=&quot;nt&quot;&gt;----&lt;/span&gt; &lt;span class=&quot;nt&quot;&gt;------------&lt;/span&gt; &lt;span class=&quot;nt&quot;&gt;----------&lt;/span&gt; &lt;span class=&quot;nt&quot;&gt;------------------------&lt;/span&gt; &lt;span class=&quot;nt&quot;&gt;-------&lt;/span&gt;
+0    0    online       intr       Tue Apr  7 23:17:32 2020 8
+1    1    online       intr       Wed Apr  8 03:27:59 2020 0&lt;/code&gt;&lt;/pre&gt;&lt;/figure&gt;
+
+&lt;p&gt;In addition to these we can change affinity of a process and many other commands are available that can come handy to examine the scheduling policies and study threads and processes in NetBSD.&lt;/p&gt;
+
+&lt;h3 id=&quot;process-structure&quot;&gt;Process structure&lt;/h3&gt;
+
+&lt;p&gt;As discussed before threads and processes are treated the same as LWPs by the scheduler. So the BSD associates a process ID with each thread, rather than with a collection of threads sharing an address space. For more detailed information regarding Process Structure please go through the book ‘The Design and Implementation of 4.4BSD Operating System’.&lt;/p&gt;
+
+&lt;h2 id=&quot;working-of-bsd-scheduler&quot;&gt;WORKING OF BSD SCHEDULER&lt;/h2&gt;
+
+&lt;h3 id=&quot;44bsd-scheduler&quot;&gt;4.4BSD scheduler&lt;/h3&gt;
+
+&lt;p&gt;The traditional &lt;strong&gt;4.4BSD scheduler&lt;/strong&gt; employs a &lt;strong&gt;multi-level feedback queues&lt;/strong&gt; algorithm, favoring interactive, short-running threads to CPU-bound ones. &lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/posts/slide-1.png&quot; alt=&quot;&quot; class=&quot;img-fluid&quot; /&gt;
+src: https://images.slideplayer.com/16/5138416/slides/slide_1.jpg&lt;/p&gt;
+
+&lt;h3 id=&quot;multilevel-feedback-queue&quot;&gt;&lt;strong&gt;Multilevel feedback queue:&lt;/strong&gt;&lt;/h3&gt;
+
+&lt;p&gt;The multi-level feedback queue is an excellent example of a system that learns from the past to predict the future. This type of scheduler maintains several queues of ready-to-run threads, where each queue holds threads with a different priority as shown in the figure. At any given time, the scheduler chooses a thread from the highest-priority non-empty queue. If the highest-priority queue contains multiple threads, then they run in the &lt;strong&gt;Round-robin&lt;/strong&gt; order. The time quantum used in 4.4BSD is &lt;strong&gt;0.1 seconds&lt;/strong&gt;. &lt;/p&gt;
+
+&lt;h3 id=&quot;niceness&quot;&gt;&lt;strong&gt;Niceness&lt;/strong&gt;&lt;/h3&gt;
+
+&lt;p&gt;Each thread has an integer nice value, that determines how nice a thread is treated than other threads. A nice of zero does not affect thread priority. A positive nice, to the maximum of 20, decreases the priority of a thread and causes it to give up some CPU time it would otherwise receive. On the other hand, a negative nice, to the minimum of -20, tends to take away CPU time from other threads.&lt;/p&gt;
+
+&lt;h3 id=&quot;priority&quot;&gt;&lt;strong&gt;Priority&lt;/strong&gt;&lt;/h3&gt;
+
+&lt;p&gt;CPU time is made available to processes according to their scheduling priority. A process has two scheduling priorities, one for scheduling &lt;strong&gt;user-mode&lt;/strong&gt; execution and one for scheduling &lt;strong&gt;kernel-mode&lt;/strong&gt; execution. The &lt;em&gt;p_usrpri&lt;/em&gt; field in the process structure contains the user-mode scheduling priority, whereas the &lt;em&gt;p_priority&lt;/em&gt; field holds the current kernel-mode scheduling priority.  Priorities are divided as shown in the figure in the range between 0 and 127, with a lower value interpreted as a higher priority.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;https://lh3.googleusercontent.com/VDh0Z0lvz7iPw2icPLr_QIN42w0PEMNtZI3T9vyQ8XcNWL7n8O3N6U7Yhz2vRmtst6guNJ69pQyEQfdmjP4qYyK6HQydtbeD49vfLIqZT4siF8TFvskFOc0yGN4fUYMTRys-ib5F&quot; alt=&quot;&quot; class=&quot;img-fluid&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;Priority distribution&lt;/p&gt;
+
+&lt;h3 id=&quot;calculating-priority&quot;&gt;Calculating priority&lt;/h3&gt;
+
+&lt;p&gt;As we have seen how priorities are divided let’s get into how actually are they calculated. The processes’ priority is determined by two values:&lt;/p&gt;
+
+&lt;ol&gt;
+  &lt;li&gt;&lt;a href=&quot;https://nxr.netbsd.org/xref/src/sys/sys/proc.h#283&quot;&gt;&lt;em&gt;p_estcpu&lt;/em&gt;&lt;/a&gt;  : Time average value of CPU ticks (&lt;em&gt;p_cpticks&lt;/em&gt;)&lt;/li&gt;
+  &lt;li&gt;&lt;a href=&quot;https://nxr.netbsd.org/xref/src/sys/sys/proc.h#325&quot;&gt;&lt;em&gt;p_nice&lt;/em&gt;&lt;/a&gt;     :  Process “nice” value with range of [ -20 to +20 ]  &lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;p&gt;A process’s &lt;em&gt;user-mode&lt;/em&gt; scheduling priority is calculated every four clock cycles (~= 40ms) using the following equation.&lt;/p&gt;
+
+&lt;blockquote&gt;
+  &lt;p&gt;&lt;em&gt;EQ1: p_usrpri = PUSER + (  p_estcpu  /  4 ) + 2 p_nice&lt;/em&gt;&lt;/p&gt;
+&lt;/blockquote&gt;
+
+&lt;p&gt;Values less than PUSER are set to PUSER (see Table) values greater than 127 are set to 127. This calculation causes the priority to decrease linearly based on recent CPU utilization. The user-controllable &lt;em&gt;p_nice&lt;/em&gt; parameter acts as a limited &lt;strong&gt;weighting factor&lt;/strong&gt;. Negative values retard the effect of heavy CPU utilization by offsetting the additive term containing &lt;em&gt;p_estcpu&lt;/em&gt;. Otherwise, if we ignore the second term, &lt;em&gt;p_nice&lt;/em&gt; simply shifts the priority by a constant factor. &lt;/p&gt;
+
+&lt;p&gt;The &lt;em&gt;p_estcpu&lt;/em&gt; is adjusted for every one second via a &lt;strong&gt;digital decay filter&lt;/strong&gt; (which reduces the effect of previous values by mathematical operations like a decay). The decay causes about 90 percent of the CPU usage accumulated in a 1-second interval to be forgotten over a period of time that is dependent on the system load average. To be exact, p_estcpu is adjusted according to EQ2 . Where the &lt;em&gt;load&lt;/em&gt; is a sampled average of the sum of the lengths of the run queue and of the short-term sleep queue over the previous 1-minute interval of system operation.  We will discuss about run queues below.&lt;/p&gt;
+
+&lt;blockquote&gt;
+  &lt;p&gt;&lt;em&gt;EQ2: p_estcpu = ( 2 load ) / ( 2 load + 1 )  p_estcpu + p_nice&lt;/em&gt;&lt;/p&gt;
+&lt;/blockquote&gt;
+
+&lt;p&gt;The working of the decay filter is explained in detail in the book [The Design and Implementation of the 4.4BSD Operating System] but we are not going to cover it here.&lt;/p&gt;
+
+&lt;h3 id=&quot;assigning-priorities&quot;&gt;Assigning priorities&lt;/h3&gt;
+
+&lt;p&gt;As discussed the runnable processes get their priorities adjusted periodically, but what about the processes that were blocked awaiting an event?&lt;/p&gt;
+
+&lt;p&gt;The system ignores such processes, so an estimate of their filtered &lt;strong&gt;CPU-usage&lt;/strong&gt; is calculated, and the priority adjusted accordingly.  The system recomputes a process’s priority when that process is awakened and has been sleeping for longer than 1 second.  This optimization can reduce the system’s overhead when many blocked processes are present. For this we use &lt;strong&gt;&lt;em&gt;p_slptime&lt;/em&gt;&lt;/strong&gt;  and estimation of the process’s filtered CPU-usage can  be done in one step with the help of this.&lt;/p&gt;
+
+&lt;h3 id=&quot;what-is-p_slptime&quot;&gt;What is &lt;strong&gt;&lt;em&gt;p_slptime&lt;/em&gt;&lt;/strong&gt;&lt;/h3&gt;
+
+&lt;p&gt;This is an estimate of the time a process has spent blocked waiting for an event. When a process calls sleep() this p_slptime is set to 0, while the process stays in SSLEEP or SSTOP state it is incremented once per second. When the process is awakened, the system calculates the &lt;em&gt;p_estcpu&lt;/em&gt;  with EQ3&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;https://lh6.googleusercontent.com/xQor5LGQzyyYYNxsdVLSqE_A2l18_aysYkaE54FUqC4NJxVFI7vI1iTdgBDcTs4jnMM_he2Proaz0a6RFPo82D0Wi_Mt_mA6ruxQWjzhEXbIVJoNNugl3e80XK56puFfidFZ_F4q&quot; alt=&quot;&quot; class=&quot;img-fluid&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;And then recalculates the scheduling priority using EQ1. This analysis ignores the influence of &lt;em&gt;p_nice,&lt;/em&gt; and the &lt;em&gt;load&lt;/em&gt; used is current avg load rather than the load at the time the process was blocked.&lt;/p&gt;
+
+&lt;h3 id=&quot;process-priority-routines&quot;&gt;Process priority routines&lt;/h3&gt;
+
+&lt;p&gt;&lt;img src=&quot;https://lh6.googleusercontent.com/aay29BucTPSorBXybGfneMax9VWkJRGeqTPpE14I8ldUG66vqqewHz8SopB2Wk7MXTzY6se8HLC28hAzxgjLci1uowG25s46qO6cCSlEjAqgV2M8r6zMhLbDPFB6_NRXvj-KiHHr&quot; alt=&quot;&quot; class=&quot;img-fluid&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;These are the procedural interface to the priority calculation.&lt;/p&gt;
+
+&lt;h3 id=&quot;process-run-queues-and-context-switching&quot;&gt;Process Run Queues and Context Switching &lt;/h3&gt;
+
+&lt;p&gt;The scheduling priority ranges between 0 and 127, with 0 to 49 reserved for processes executing in kernel mode, and 50 to 127 reserved for processes executing in user mode. &lt;/p&gt;
+
+&lt;p&gt;The system uses 32 run queues, selecting a run queue for a process by dividing the process’s priority by 4.  The run queues contain all the runnable processes in main memory except the currently running process.  The head of each run queue is kept in an array; associated with this array is a bit map, &lt;em&gt;whichqs&lt;/em&gt;, that is used in identifying the nonempty run queues. &lt;/p&gt;
+
+&lt;p&gt;Two main routines for managing the queues:&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;&lt;em&gt;setrunqueue&lt;/em&gt;() &lt;/li&gt;
+  &lt;li&gt;&lt;em&gt;rmrq&lt;/em&gt;()&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;The context switch is divided into two types&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;&lt;em&gt;miswitch&lt;/em&gt;() — machine-independent&lt;/li&gt;
+  &lt;li&gt;&lt;em&gt;Cpuswitch&lt;/em&gt;() — machine dependent&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;Let’s observe the importance of each function.&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;&lt;em&gt;cpu_switch&lt;/em&gt;()&lt;/strong&gt;: the heart of the scheduling algorithm and is responsible for selecting a new process to run, and it operates as follows:&lt;/p&gt;
+
+&lt;ol&gt;
+  &lt;li&gt;
+    &lt;p&gt;Block interrupts, then look for a nonempty run queue. Locate a nonempty queue by finding the location of the first nonzero bit in the &lt;em&gt;whichqs&lt;/em&gt; bit vector. If &lt;em&gt;whichqs&lt;/em&gt; is zero, there are no processes to run, so unblock interrupts and loop; this loop is the &lt;em&gt;idle loop&lt;/em&gt;.&lt;/p&gt;
+  &lt;/li&gt;
+  &lt;li&gt;
+    &lt;p&gt;Given a nonempty run queue, remove the first process on the queue.&lt;/p&gt;
+  &lt;/li&gt;
+  &lt;li&gt;
+    &lt;p&gt;If this run queue is now empty as a result of removing the process, reset the appropriate bit in &lt;em&gt;whichqs&lt;/em&gt;.&lt;/p&gt;
+  &lt;/li&gt;
+  &lt;li&gt;
+    &lt;p&gt;Clear the &lt;em&gt;curproc&lt;/em&gt; pointer and the &lt;em&gt;want_resched&lt;/em&gt; flag. The &lt;em&gt;curproc&lt;/em&gt; pointer references the currently running process. Clear it to show that &lt;em&gt;no process is currently running&lt;/em&gt;. The &lt;em&gt;want_resched&lt;/em&gt; flag shows that a context switch should take place; it is explained in next part&lt;/p&gt;
+  &lt;/li&gt;
+  &lt;li&gt;
+    &lt;p&gt;Set the new process running and unblock interrupts.&lt;/p&gt;
+  &lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;p&gt;&lt;strong&gt;&lt;em&gt;mi_switch&lt;/em&gt;():&lt;/strong&gt; It contains the machine independent part of the context-switching code. Which is called when a process wants to &lt;em&gt;sleep()&lt;/em&gt;.&lt;/p&gt;
+
+&lt;p&gt;Now we have &lt;em&gt;mi_switch&lt;/em&gt;(), priority calculations, but we need a mechanism for forcing an involuntary context switching. &lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;Voluntary context switches occur when a process calls the &lt;em&gt;sleep&lt;/em&gt;() routine.&lt;br /&gt;
+  &lt;em&gt;Sleep&lt;/em&gt;() can be invoked by only a runnable process, so &lt;em&gt;sleep&lt;/em&gt;() needs only to place the process on a sleep queue and to invoke &lt;em&gt;mi_switch&lt;/em&gt;() to schedule the next process to run.  &lt;em&gt;mi_switch()&lt;/em&gt; can’t be called by a process that is in &lt;em&gt;interrupt&lt;/em&gt; state, because it must be called with in the context of a &lt;em&gt;running&lt;/em&gt; process.&lt;/li&gt;
+  &lt;li&gt;
+    &lt;p&gt;The new mechanism is handled by the machine-dependent &lt;em&gt;need_resched&lt;/em&gt;() routine, which generally sets a global &lt;em&gt;reschedule request&lt;/em&gt; flag, named &lt;em&gt;want_resched&lt;/em&gt;, and then posts an &lt;em&gt;asynchronous system trap&lt;/em&gt; (&lt;em&gt;AST&lt;/em&gt;) for the current process.&lt;/p&gt;
+
+    &lt;p&gt;when a process is woken up and if it comes across an AST trap it requests for reschedule instead of resuming the process execution.&lt;/p&gt;
+  &lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;The 4.4 BSD scheduler doesn’t support preemptions in kernel mode. So the drawback here is it is not. Real Time scheduler.&lt;br /&gt;
+This is about the 4.4BSD Scheduler, Let’s learn about the advanced &lt;strong&gt;M2 Scheduler&lt;/strong&gt; in the second part.&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;References&lt;/strong&gt;:&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;&lt;a href=&quot;http://pages.cs.wisc.edu/~remzi/OSTEP/cpu-sched-mlfq.pdf&quot;&gt;http://pages.cs.wisc.edu/~remzi/OSTEP/cpu-sched-mlfq.pdf&lt;/a&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;a href=&quot;https://www.netbsd.org/docs/internals/en/chap-processes.html&quot;&gt;https://www.netbsd.org/docs/internals/en/chap-processes.html&lt;/a&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;a href=&quot;http://www.netbsd.org/~rmind/pub/netbsd_5_scheduling_apis.pdf&quot;&gt;http://www.netbsd.org/~rmind/pub/netbsd_5_scheduling_apis.pdf&lt;/a&gt;&lt;/li&gt;
+&lt;/ul&gt;</content><author><name>Shannu</name></author><category term="[&quot;BSD&quot;, &quot;Scheduling&quot;, &quot;Unix&quot;]" /><summary type="html">INTRODUCTION</summary></entry><entry><title type="html">What is Linux? and why?</title><link href="/oss/linux/2018/08/11/what-is-linux-and-why/" rel="alternate" type="text/html" title="What is Linux? and why?" /><published>2018-08-11T00:00:00+00:00</published><updated>2018-08-11T00:00:00+00:00</updated><id>/oss/linux/2018/08/11/what-is-linux-and-why</id><content type="html" xml:base="/oss/linux/2018/08/11/what-is-linux-and-why/">&lt;p&gt;Linux is a Free and Open-source Operating System which is similar to Windows, macOS, Android, IOS on your PC, Mac, MacBook and mobile phones. Before knowing about Linux, let me answer the question.&lt;/p&gt;
+
+&lt;h2 id=&quot;what-is-an-operating-system&quot;&gt;What is an Operating System?&lt;/h2&gt;
+
+&lt;p&gt;In simpler words,&lt;/p&gt;
+
+&lt;p&gt;An Operating System is a software that sits beneath all other software and applications in the computer, receiving requests from these applications above continuously and assign tasks to the Hardware accordingly. As shown in the illustration below&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/posts/os_cartoon.jpg&quot; alt=&quot;&quot; class=&quot;img-fluid&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;As you see here OS is the master of your computer who controls all that is going on the Computer. Linux is one such Operating System.&lt;/p&gt;
+
+&lt;p&gt;What does the word “Linux” mean? Well, Linux refers to the Linux kernel, the core of a computer and it is also a set of programs, tools, and services that are bundled together with the Linux kernel, which can support a fully functional Operating System(Ubuntu). It is also called a Linux distribution, and there are many Linux distros(distributions) around the world.&lt;/p&gt;
+
+&lt;h2 id=&quot;what-is-a-linux-distrodistribution&quot;&gt;What is a Linux distro(distribution)?&lt;/h2&gt;
+
+&lt;blockquote&gt;
+  &lt;p&gt;“A &lt;strong&gt;Linux distribution&lt;/strong&gt; (often abbreviated as &lt;strong&gt;distro&lt;/strong&gt;) is an operating system made from a software collection, which is based upon the &lt;strong&gt;Linux&lt;/strong&gt; kernel and, often, a package management system. The software is usually adapted to the &lt;strong&gt;distrib&lt;/strong&gt;&lt;strong&gt;ution&lt;/strong&gt; and then packaged into software packages by the &lt;strong&gt;distribution’s&lt;/strong&gt; maintainers” – wikipaedia&lt;/p&gt;
+&lt;/blockquote&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/posts/package-e1534021057100.jpg&quot; alt=&quot;package.jpg&quot; class=&quot;img-fluid&quot; /&gt; To know how much vast the Linux network is, check this timeline of some Linux distros used around the world and their origin – &lt;a href=&quot;https://en.wikipedia.org/wiki/Linux_distribution#/media/File:Linux_Distribution_Timeline.svg&quot;&gt;Linux_distro_TimeLine&lt;/a&gt;.&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;SOME POPULAR LINUX DISTROS:&lt;/strong&gt;&lt;/p&gt;
+
+&lt;ol&gt;
+  &lt;li&gt;Arch Linux&lt;/li&gt;
+  &lt;li&gt;Ubuntu&lt;/li&gt;
+  &lt;li&gt;Cent OS&lt;/li&gt;
+  &lt;li&gt;Red Hat&lt;/li&gt;
+  &lt;li&gt;Debian&lt;/li&gt;
+  &lt;li&gt;Fedora&lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;h2 id=&quot;what-is-kernel&quot;&gt;What is Kernel?&lt;/h2&gt;
+
+&lt;p&gt;Assume an Operating System as a nut, Kernel as the softer and edible internal part of the nut(OS).&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/posts/untitled-drawing.png&quot; alt=&quot;Untitled drawing.png&quot; class=&quot;img-fluid&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;Here the Operating system is the nutshell which has all the software packages and contains kernel (the inner seed) inside it. So the kernel is the part of Operating System. The &lt;strong&gt;Operating System&lt;/strong&gt; is the software package that communicates directly with the hardware and the applications we use over the OS. A kernel is the core part of an Operating System which communicates with the hardware, and also it is also a  part of OS responsible for translating a command given by us humans, into something that can be understood by the computer( the CPU).&lt;/p&gt;
+
+&lt;p&gt;We will get to know in detail about several parts of Operating Systems in later posts. You may get this doubt,&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;“While there are many Operating Systems around the world, why Linux? And who all can use it? How is it different from other Operating Systems ?”&lt;/strong&gt;&lt;/p&gt;
+
+&lt;p&gt;Let us get answers to all the above questions,&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;Who all can use Linux?&lt;/strong&gt;&lt;/p&gt;
+
+&lt;p&gt;Linux is suitable for any user from kids to adults, and from developers to businessmen. But sorry gamers Linux can’t play games like GTA V for you, but you can make it play by some modifications.&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;How is Linux different from other Operating Systems?&lt;/strong&gt;&lt;/p&gt;
+
+&lt;p&gt;Linux runs on any system, Laptop, pc, mobile, tab, notebook, ….. Most of the android phones in the world run on Linux-kernel. Linux is the best OS for the server systems. If you are going to build a server the OS which everyone suggests is LINUX. Linux is also very secure, it is purely buildup from ‘C-language’ and doesn’t have many vulnerabilities which other Operating Systems has.&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;What makes Linux so special? Why should one choose Linux?&lt;/strong&gt;&lt;/p&gt;
+
+&lt;p&gt;When you think of choosing an OS you will first search for the one which you can modify at your will that suits you.&lt;/p&gt;
+
+&lt;p&gt;These are some reasons why one should use Linux:&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;
+    &lt;p&gt;&lt;strong&gt;Linux is free of charge and the user has every right on the OS Source code&lt;/strong&gt;&lt;/p&gt;
+
+    &lt;ul&gt;
+      &lt;li&gt;Linux distros will give full access to change or update it’s source code to it’s users. Because of which you can configure your OS according to your will, and the way you want it to be.&lt;/li&gt;
+      &lt;li&gt;You can customize your OS the way you want to it to look like.&lt;/li&gt;
+    &lt;/ul&gt;
+  &lt;/li&gt;
+  &lt;li&gt;&lt;strong&gt;Enterprise Linux&lt;/strong&gt;
+    &lt;ul&gt;
+      &lt;li&gt;Some Linux distros like Red Hat are paid and used by many enterprises because, it is stable, supported and certified by many developers. When your systems in your business crashes. Red Hat gives you services for fixing them up and make your work more safe and less loss.&lt;/li&gt;
+    &lt;/ul&gt;
+  &lt;/li&gt;
+  &lt;li&gt;
+    &lt;p&gt;&lt;strong&gt;Linux is the most secure server in the world&lt;/strong&gt;&lt;/p&gt;
+
+    &lt;ul&gt;
+      &lt;li&gt;Almost every server in this world presently runs on Linux, it is secure and fast as well. One of the best advantages is you need not spend lots of money on antivirus software to secure your servers or PCs.&lt;/li&gt;
+      &lt;li&gt;Linux also has the best and strong community with millions of developers working together every single day to bring new features and improve security. You cannot see such an active and strong community for any other Operating System.&lt;/li&gt;
+    &lt;/ul&gt;
+  &lt;/li&gt;
+  &lt;li&gt;
+    &lt;p&gt;&lt;strong&gt;Working with Linux is faster and easier&lt;/strong&gt;&lt;/p&gt;
+
+    &lt;ul&gt;
+      &lt;li&gt;In Linux, most of the work is done by terminal so most of the time is saved working with mouse clicks and you can even access, delete, execute single/multiple files with single lined commands.&lt;/li&gt;
+      &lt;li&gt;You can customize your OS packages their versions and packages depending on the work you do.&lt;/li&gt;
+    &lt;/ul&gt;
+  &lt;/li&gt;
+  &lt;li&gt;
+    &lt;p&gt;&lt;strong&gt;Linux is compatible with any hardware&lt;/strong&gt;&lt;/p&gt;
+
+    &lt;ul&gt;
+      &lt;li&gt;You need not worry whether the hardware of your computer supports Linux or not? Because Linux works on any hardware from 1GB RAM to 16GB RAM and any architecture.&lt;/li&gt;
+    &lt;/ul&gt;
+  &lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;With all these knowledge I conclude Linux is an Operating System which works as you need it to be. Every Linux is your own OS with some unique characteristics and some differences from other.&lt;/p&gt;
+
+&lt;blockquote&gt;
+  &lt;p&gt;“Linux gives you freedom. Freedom to explore, create, modify and publish your own version of the OS”.&lt;/p&gt;
+&lt;/blockquote&gt;
+
+&lt;p&gt;&lt;strong&gt;Thanks to “Linus Torvalds”, the creator of Linux for giving us such a freedom.&lt;/strong&gt;&lt;/p&gt;</content><author><name>Shannu</name></author><category term="[&quot;OSS&quot;, &quot;Linux&quot;]" /><summary type="html">Linux is a Free and Open-source Operating System which is similar to Windows, macOS, Android, IOS on your PC, Mac, MacBook and mobile phones. Before knowing about Linux, let me answer the question.</summary></entry><entry><title type="html">Why should we be proud of being Indian?</title><link href="/non-tech/india/2018/06/27/why-should-we-be-proud-of-being-indian/" rel="alternate" type="text/html" title="Why should we be proud of being Indian?" /><published>2018-06-27T00:00:00+00:00</published><updated>2018-06-27T00:00:00+00:00</updated><id>/non-tech/india/2018/06/27/why-should-we-be-proud-of-being-indian</id><content type="html" xml:base="/non-tech/india/2018/06/27/why-should-we-be-proud-of-being-indian/">&lt;p&gt;Every member of a family have to know about the greatness of their family and feel proud to be a part of the family. In the same way, we Indians should know about our first home, the first family &lt;strong&gt;INDIA&lt;/strong&gt; and it’s our duty to know about our nation and say out proudly “I am an Indian”.&lt;/p&gt;
+
+&lt;h2 id=&quot;principles-and-culture&quot;&gt;Principles and culture:&lt;/h2&gt;
+
+&lt;p&gt;Indian culture and civilization are one of the oldest civilization, even our scriptures in Sanskrit (The Vedas) are many years old nearly 500 BCE. Indian principles and culture are very intricately designed and it helps one individual to lead a happy and contented life with dharma. It is a country where even footwear was given respect as the same that of a king that wears them (Sri Rama’s padukaas were worshipped as king and the Ayodhya was ruled on their name by bharata). Our epics Mahabharata, Ramayana together represents the whole practical world and it’s people, their characters, circumstances etc., clearly, these epics will help one to realize and act in their life. If you see through history even there are many empires within India fighting each other&lt;/p&gt;
+
+&lt;h2 id=&quot;india-as-a-banyan-tree&quot;&gt;India as a banyan tree..&lt;/h2&gt;
+
+&lt;p&gt;To explain how far India has contributed to the world, we can use the banyan tree. A banyan tree is huge spreading its branches wide and broad and roots deep to the ground, In the same way, India has rooted deep through its principles and had contributed to the world in many fields.&lt;/p&gt;
+
+&lt;h3 id=&quot;science&quot;&gt;Science:&lt;/h3&gt;
+
+&lt;p&gt;Coming to science, our sages also called as rishis had made many inventions and discoveries in the field of medicine, astrology, mathematics and more.&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;Medicine:&lt;/strong&gt;&lt;/p&gt;
+
+&lt;p&gt;We have &lt;strong&gt;Ayurveda,&lt;/strong&gt; the oldest way of medication with no side-effects as the new ways have. It is treated using herbs and leaves of special plants according to the illness which is pure natural. We have great writings like charaka samhita,  writings from shushruta etc., Ayurveda is now again came into existance after mankind had suffered a lot from the side effects og the new medication we use. “ We never get to know the importance of what we have unless/untill we get to know that every one finds it good”.&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;Mathematics:&lt;/strong&gt;&lt;/p&gt;
+
+&lt;p&gt;From India there are many mathematicians who even changed the way the world count. Aryabhatta the inventor of “0”(zero) had changed the mathematics of the whole planet. It also helped the computer invention.&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;Astrology:&lt;/strong&gt;&lt;/p&gt;
+
+&lt;p&gt;Indian had a vast and amazing contribution towards astrology since ancient times. Just think how they could say that earth (bhudevi) is in a spherical form as mentioned in our epics during the times when there is no telescope invented. They could also estimate and calculate when full moon, eclipse come after thousands of years with accuracy.&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;Seva / values:&lt;/strong&gt;&lt;/p&gt;
+
+&lt;p&gt;We have references in history about greatkings, sages, even poor people who served the society a lot. The ancient scriptures also teach us the best values and principles for a leader, citizen, teacher etc.,&lt;/p&gt;
+
+&lt;p&gt;Vedas are the root of our culture and our way of living they are the greatest and idle  scriptures which are followed and worshipped by everyone with or without knowing.&lt;/p&gt;
+
+&lt;p&gt;These are some root reason I am proud to be an Indian.&lt;/p&gt;</content><author><name>Shannu</name></author><category term="[&quot;Non-Tech&quot;, &quot;India&quot;]" /><summary type="html">Every member of a family have to know about the greatness of their family and feel proud to be a part of the family. In the same way, we Indians should know about our first home, the first family INDIA and it’s our duty to know about our nation and say out proudly “I am an Indian”.</summary></entry><entry><title type="html">Getting Started with Mozilla.</title><link href="/mozilla/oss/2018/06/12/getting-started-with-mozilla/" rel="alternate" type="text/html" title="Getting Started with Mozilla." /><published>2018-06-12T00:00:00+00:00</published><updated>2018-06-12T00:00:00+00:00</updated><id>/mozilla/oss/2018/06/12/getting-started-with-mozilla</id><content type="html" xml:base="/mozilla/oss/2018/06/12/getting-started-with-mozilla/">&lt;p&gt;&lt;img src=&quot;/assets/img/posts/mozilla.png&quot; alt=&quot;mozilla&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;Hello readers, I would like to share my experience while contributing to the Mozilla the Open Source organization. Mozilla is very broad organization and developers in the organization are very helpful. I am inspired by the commitment of the developers I can surely say Mozilla is one of the best places where all the people around us help to develop our skills and help when we were struck anywhere.&lt;/p&gt;
+
+&lt;p&gt;This blog post lets you know how my journey with Mozilla is started and also how a complete beginner can start their contribution to this organization.&lt;/p&gt;
+
+&lt;p&gt;Getting started with Mozilla there are many areas where one can contribute to this organization. You can refer the link &lt;a href=&quot;https://developer.mozilla.org/en-US/docs/Mozilla/Developer_guide&quot;&gt;Developer-guide&lt;/a&gt; any time for building, contributing, submitting patches etc., This blog post mainly focusses on &lt;strong&gt;Firefox Desktop&lt;/strong&gt; for Linux (the Linux-distribution used here is &lt;em&gt;Ubuntu 16.04&lt;/em&gt;).&lt;/p&gt;
+
+&lt;h2 id=&quot;lets-get-started&quot;&gt;&lt;strong&gt;Let’s get started:&lt;/strong&gt;&lt;/h2&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;Make sure your system satisfies all the requirements before Building.
+    &lt;ul&gt;
+      &lt;li&gt;These Requirements for Unix/Linux.
+        &lt;ul&gt;
+          &lt;li&gt;2G RAM with lots of available swap space. Additional RAM will significantly decrease build time.&lt;/li&gt;
+          &lt;li&gt;For debug builds: at least 8 GB free disk space&lt;/li&gt;
+          &lt;li&gt;For optimized builds: at least 1 GB free disk space (6 GB recommended)&lt;/li&gt;
+        &lt;/ul&gt;
+      &lt;/li&gt;
+      &lt;li&gt;The following procedure is for 64 bit Linux Operating System. To check which bit processor you use, use the command &lt;code class=&quot;highlighter-rouge&quot;&gt;uname -m&lt;/code&gt; in the terminal which gives &lt;code class=&quot;highlighter-rouge&quot;&gt;x86_64&lt;/code&gt; denoting 64-bit processor.&lt;/li&gt;
+      &lt;li&gt;You will need python 2.6 or 2.7 installed, which you can check with &lt;code class=&quot;highlighter-rouge&quot;&gt;python --version.&lt;/code&gt;&lt;/li&gt;
+      &lt;li&gt;Finally, a reasonably fast internet connection and 30GB of free disk space.&lt;/li&gt;
+    &lt;/ul&gt;
+  &lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;For more detailed list visit &lt;a href=&quot;https://developer.mozilla.org/en-US/docs/Mozilla/Developer_guide/Build_Instructions/Linux_Prerequisites&quot;&gt;build-requirements&lt;/a&gt;.&lt;/p&gt;
+
+&lt;p&gt;With everything set up let’s jump into building firefox.&lt;/p&gt;
+
+&lt;p&gt;Create a directory named “src” under your home directory:&lt;/p&gt;
+
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;table class=&quot;rouge-table&quot;&gt;&lt;tbody&gt;&lt;tr&gt;&lt;td class=&quot;rouge-gutter gl&quot;&gt;&lt;pre class=&quot;lineno&quot;&gt;1
+&lt;/pre&gt;&lt;/td&gt;&lt;td class=&quot;rouge-code&quot;&gt;&lt;pre&gt;mkdir src &amp;amp;&amp;amp; cd src
+&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/tbody&gt;&lt;/table&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;Next download &lt;a href=&quot;https://hg.mozilla.org/mozilla-central/raw-file/default/python/mozboot/bin/bootstrap.py&quot;&gt;the bootstrap.py script&lt;/a&gt; and save it in the “&lt;strong&gt;src/&lt;/strong&gt;” directory.&lt;/p&gt;
+
+&lt;p&gt;Now you can start the bootstrapper using python 2.7 or 2.6 in the terminal&lt;/p&gt;
+
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;table class=&quot;rouge-table&quot;&gt;&lt;tbody&gt;&lt;tr&gt;&lt;td class=&quot;rouge-gutter gl&quot;&gt;&lt;pre class=&quot;lineno&quot;&gt;1
+&lt;/pre&gt;&lt;/td&gt;&lt;td class=&quot;rouge-code&quot;&gt;&lt;pre&gt;python bootstrap.py
+&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/tbody&gt;&lt;/table&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;Running this command leads you to some prompts and then follow them for building in the way you prefer if you are new to Mozilla and not sure what to choose? go with the default.&lt;/p&gt;
+
+&lt;h2 id=&quot;community-access&quot;&gt;&lt;strong&gt;Community Access:&lt;/strong&gt;&lt;/h2&gt;
+
+&lt;p&gt;For contributing to any organization you need to get access to the developer community, IRC, mailing list, Bug-Tracker.&lt;/p&gt;
+
+&lt;p&gt;&lt;a href=&quot;https://bugzilla.mozilla.org/&quot;&gt;Bugzilla&lt;/a&gt; is the Mozilla’s issue tracker, you will need an account in this tracker to log into and comment or submit a patch for a bug. You can use GitHub account also for making an account.&lt;/p&gt;
+
+&lt;p&gt;Most of the discussion in the community takes place in the IRC. You can ask for guidance and help during the build or fixing an error/bug in the IRC. I prefer the IRC client &lt;a href=&quot;https://www.irccloud.com/&quot;&gt;IRCCLOUD&lt;/a&gt; for chatting in the IRC. Follow this &lt;a href=&quot;https://wiki.mozilla.org/IRC&quot;&gt;documentation&lt;/a&gt; to know how to use IRC. Some of the important channel names which may help you in the beginning are&lt;/p&gt;
+
+&lt;p&gt;&lt;code class=&quot;highlighter-rouge&quot;&gt;#introduction, #build, #coding, #newbies, #qa&lt;/code&gt; these channels will help you by providing support and help.&lt;/p&gt;
+
+&lt;h2 id=&quot;getting-the-source-code&quot;&gt;Getting the source code:&lt;/h2&gt;
+
+&lt;p&gt;If you didn’t allow the bootstrapper to download the Mozilla-unified you can clone it using Mercurial (a VCS which Mozilla community uses).&lt;/p&gt;
+
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;table class=&quot;rouge-table&quot;&gt;&lt;tbody&gt;&lt;tr&gt;&lt;td class=&quot;rouge-gutter gl&quot;&gt;&lt;pre class=&quot;lineno&quot;&gt;1
+&lt;/pre&gt;&lt;/td&gt;&lt;td class=&quot;rouge-code&quot;&gt;&lt;pre&gt;hg clone https://hg.mozilla.org/mozilla-central 
+&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/tbody&gt;&lt;/table&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;&lt;strong&gt;**NOTE**:&lt;/strong&gt; If your network is not fast enough or having any interruptions in the connection cloning will give some issues and source code will not be downloaded properly. For this try&lt;/p&gt;
+
+&lt;p&gt;(If cloning is completed without any errors you can skip this step).&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;Mercurial Bundle:&lt;/strong&gt;&lt;/p&gt;
+
+&lt;p&gt;The advantage of building the source code using bundles is unlike the &lt;code class=&quot;highlighter-rouge&quot;&gt;hg clone&lt;/code&gt; you can pause and resume your download whenever there is an interruption to the connection. For this download the desired bundle of source code, you are interested in working and download it.&lt;/p&gt;
+
+&lt;p&gt;Up-to-date bundles of some repositories can be found in &lt;a href=&quot;https://hg.mozilla.org/&quot;&gt;https://hg.mozilla.org/&lt;/a&gt; which are available on a CDN (Content Delivery Network) at &lt;a href=&quot;https://hg.cdn.mozilla.net/&quot;&gt;https://hg.cdn.mozilla.net/&lt;/a&gt; you can download the Mozilla-central repository from here. Generally, &lt;strong&gt;zstd bundles&lt;/strong&gt; are preferred they are smaller in size and faster to decompress but they are supported on the modern version of mercurial clients only. To avoid confusion rename the downloaded file as “&lt;strong&gt;bundle.hg&lt;/strong&gt;”.&lt;/p&gt;
+
+&lt;p&gt;Follow the below steps:&lt;/p&gt;
+
+&lt;div class=&quot;language-html highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;table class=&quot;rouge-table&quot;&gt;&lt;tbody&gt;&lt;tr&gt;&lt;td class=&quot;rouge-gutter gl&quot;&gt;&lt;pre class=&quot;lineno&quot;&gt;1
+2
+&lt;/pre&gt;&lt;/td&gt;&lt;td class=&quot;rouge-code&quot;&gt;&lt;pre&gt;mkdir mozilla-central
+hg init mozilla-central
+&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/tbody&gt;&lt;/table&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;div class=&quot;language-html highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;table class=&quot;rouge-table&quot;&gt;&lt;tbody&gt;&lt;tr&gt;&lt;td class=&quot;rouge-gutter gl&quot;&gt;&lt;pre class=&quot;lineno&quot;&gt;1
+2
+3
+&lt;/pre&gt;&lt;/td&gt;&lt;td class=&quot;rouge-code&quot;&gt;&lt;pre&gt;cd mozilla-central
+hg unbundle /...../bundle.hg
+ hg config --edit or   EDITOR= hg config --edit 
+&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/tbody&gt;&lt;/table&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;div class=&quot;language-html highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;table class=&quot;rouge-table&quot;&gt;&lt;tbody&gt;&lt;tr&gt;&lt;td class=&quot;rouge-gutter gl&quot;&gt;&lt;pre class=&quot;lineno&quot;&gt;1
+2
+&lt;/pre&gt;&lt;/td&gt;&lt;td class=&quot;rouge-code&quot;&gt;&lt;pre&gt;[paths]Let
+default = https://hg.mozilla.org/mozilla-central/
+&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/tbody&gt;&lt;/table&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;div class=&quot;language-html highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;table class=&quot;rouge-table&quot;&gt;&lt;tbody&gt;&lt;tr&gt;&lt;td class=&quot;rouge-gutter gl&quot;&gt;&lt;pre class=&quot;lineno&quot;&gt;1
+&lt;/pre&gt;&lt;/td&gt;&lt;td class=&quot;rouge-code&quot;&gt;&lt;pre&gt;hg pull
+&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/tbody&gt;&lt;/table&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;div class=&quot;language-html highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;table class=&quot;rouge-table&quot;&gt;&lt;tbody&gt;&lt;tr&gt;&lt;td class=&quot;rouge-gutter gl&quot;&gt;&lt;pre class=&quot;lineno&quot;&gt;1
+&lt;/pre&gt;&lt;/td&gt;&lt;td class=&quot;rouge-code&quot;&gt;&lt;pre&gt;hg update
+&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/tbody&gt;&lt;/table&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;Here we initialized mercurial in the Mozilla-central directory. and configured .hgrc for default path, which will pull or push to the default link. Try to fix any errors if you encounter any in these steps. Once everything works properly, we successfully downloaded the source code for Firefox. The commands “&lt;strong&gt;hg pull”&lt;/strong&gt; and “&lt;strong&gt;hg update”&lt;/strong&gt; will help you to keep the source up-to-date.&lt;/p&gt;
+
+&lt;h2 id=&quot;building-the-source-code&quot;&gt;&lt;strong&gt;Building the Source Code:&lt;/strong&gt;&lt;/h2&gt;
+
+&lt;p&gt;Building a source code is similar to compiling your program before execution here it is more simple. But if you are building Mozilla-central for the first time it’s better to grab a cup of coffee and a novel to read, because it takes a lot of time for building. You can anytime build your code using :&lt;/p&gt;
+
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;table class=&quot;rouge-table&quot;&gt;&lt;tbody&gt;&lt;tr&gt;&lt;td class=&quot;rouge-gutter gl&quot;&gt;&lt;pre class=&quot;lineno&quot;&gt;1
+&lt;/pre&gt;&lt;/td&gt;&lt;td class=&quot;rouge-code&quot;&gt;&lt;pre&gt;./mach build
+&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/tbody&gt;&lt;/table&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;If you encounter any errors related to LLVM/CLANG install the version asked for and again run “&lt;strong&gt;./mach build”&lt;/strong&gt;.&lt;/p&gt;
+
+&lt;h2 id=&quot;let-the-fun-begin&quot;&gt;Let the  fun begin:&lt;/h2&gt;
+
+&lt;p&gt;With everything set you may now run your code and visualize the project when you run the code, using &lt;code class=&quot;highlighter-rouge&quot;&gt;./mach run&lt;/code&gt; which will launch the nightly version of Firefox. With this you are ready to hack into the firefox and explore, fix-issues, create new features …etc., You can now start communicating to people via #introduction take up a “&lt;strong&gt;good-first-bug”&lt;/strong&gt; and start contributing.&lt;/p&gt;
+
+&lt;p&gt;Have a happy contribution…&lt;/p&gt;
+
+&lt;p&gt;See you all later with another blog post.&lt;/p&gt;</content><author><name>Shannu</name></author><category term="[&quot;Mozilla&quot;, &quot;OSS&quot;]" /><summary type="html"></summary></entry><entry><title type="html">Getting started with Drupal</title><link href="/drupal/oss/2018/01/26/getting-started-with-drupal/" rel="alternate" type="text/html" title="Getting started with Drupal" /><published>2018-01-26T00:00:00+00:00</published><updated>2018-01-26T00:00:00+00:00</updated><id>/drupal/oss/2018/01/26/getting-started-with-drupal</id><content type="html" xml:base="/drupal/oss/2018/01/26/getting-started-with-drupal/">&lt;p&gt;&lt;strong&gt;About Drupal:&lt;/strong&gt;&lt;/p&gt;
+
+&lt;p&gt;Drupal is a web platform which works on Content Management System (CMS), which helps to create and manage digital content.This system actually helps one who cannot understand code or doesn’t know how databases work to manipulate the database, adding templates, designing the layout with the user interface.Here are some examples of what can we create using Drupal: &lt;a href=&quot;https://barackobama.com/&quot;&gt;Barack Obama&lt;/a&gt;, &lt;a href=&quot;http://themis.asu.edu/&quot;&gt;themis&lt;/a&gt;.&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;Getting started with Drupal:&lt;/strong&gt;&lt;/p&gt;
+
+&lt;p&gt;To contribute or to fix any bugs in any organization we should first,  have the source code of the project we wanted to work in our local system.Now we are going to learn how to install Drupal on our localhost using Linux machine(the os I used is Ubuntu 16.04).Before starting log into the following sites  &lt;a href=&quot;http://drupalladder.org&quot;&gt;drupal.org&lt;/a&gt; and &lt;a href=&quot;http://drupalladder.org/ladder/ee503327-50be-1904-8d04-9499098cad64&quot;&gt;Drupal ladder&lt;/a&gt;.&lt;/p&gt;
+
+&lt;h3 id=&quot;step-1&quot;&gt;STEP 1:&lt;/h3&gt;
+
+&lt;p&gt;&lt;strong&gt;Install and configure Drupal local environment using LAMP stack in Ubuntu.&lt;/strong&gt;&lt;/p&gt;
+
+&lt;p&gt;Before installing let us know what LAMP STACK is? and what does it do?&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;LAMP STACK:&lt;/strong&gt; LAMP stands for (Linux, Apache, MySQL, PHP) which is a platform useful manage websites.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/posts/lamp.png&quot; alt=&quot;LAMP_software_bundle.png&quot; class=&quot;img-fluid&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;The above picture lets you understand the workflow of the LAMP to some extent.Here &lt;strong&gt;Linux&lt;/strong&gt; is our server side, &lt;strong&gt;Apache&lt;/strong&gt; is the web server which deals with the HTTP requests and the content written in php. &lt;strong&gt;MySQL&lt;/strong&gt; RDMS (Relational Database Management System) which is based on SQL and as Database management system.&lt;strong&gt;PHP&lt;/strong&gt; as the Object-oriented scripting language.&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;The installing LAMP in Linux:&lt;/strong&gt;&lt;/p&gt;
+
+&lt;p&gt;There are many ways to install LAMP&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;Install&lt;/strong&gt; &lt;strong&gt;APACHE2:&lt;/strong&gt;&lt;/p&gt;
+
+&lt;figure class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-bash&quot; data-lang=&quot;bash&quot;&gt;&lt;span class=&quot;nv&quot;&gt;$ &lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;sudo &lt;/span&gt;apt-get update
+&lt;span class=&quot;nv&quot;&gt;$ &lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;sudo &lt;/span&gt;apt-get &lt;span class=&quot;nb&quot;&gt;install &lt;/span&gt;apache2&lt;/code&gt;&lt;/pre&gt;&lt;/figure&gt;
+
+&lt;p&gt;after this, you need to install MySQL&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;&lt;em&gt;Install MySQL:&lt;/em&gt;&lt;/strong&gt;&lt;/p&gt;
+
+&lt;figure class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-bash&quot; data-lang=&quot;bash&quot;&gt;&lt;span class=&quot;nv&quot;&gt;$ &lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;sudo &lt;/span&gt;apt-get &lt;span class=&quot;nb&quot;&gt;install &lt;/span&gt;mysql-server mysql-client&lt;/code&gt;&lt;/pre&gt;&lt;/figure&gt;
+
+&lt;p&gt;&lt;strong&gt;Installing PHP:&lt;/strong&gt;&lt;/p&gt;
+
+&lt;figure class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-bash&quot; data-lang=&quot;bash&quot;&gt;&lt;span class=&quot;nv&quot;&gt;$ &lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;sudo &lt;/span&gt;apt-get &lt;span class=&quot;nb&quot;&gt;install &lt;/span&gt;mysql-server mysql-client&lt;/code&gt;&lt;/pre&gt;&lt;/figure&gt;
+
+&lt;p&gt;OR there is a single line command with which you can install the LAMP in your Linux pc and install &lt;strong&gt;phpmyadmin&lt;/strong&gt;.&lt;/p&gt;
+
+&lt;figure class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-bash&quot; data-lang=&quot;bash&quot;&gt;&lt;span class=&quot;nv&quot;&gt;$ &lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;sudo &lt;/span&gt;apt-get &lt;span class=&quot;nb&quot;&gt;install &lt;/span&gt;lamp-server^ phpmyadmin&lt;/code&gt;&lt;/pre&gt;&lt;/figure&gt;
+
+&lt;p&gt;PHPMyAdmin is again a free tool which allows us to manage databases (create and modify) and it can be used to administrate MySQL over the Web.&lt;/p&gt;
+
+&lt;h4 id=&quot;step-2&quot;&gt;&lt;strong&gt;STEP 2:&lt;/strong&gt;&lt;/h4&gt;
+
+&lt;p&gt;&lt;strong&gt;Start Apache and MySQL servers.&lt;/strong&gt;&lt;/p&gt;
+
+&lt;p&gt;You can do it using the “start” command.&lt;/p&gt;
+
+&lt;figure class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-bash&quot; data-lang=&quot;bash&quot;&gt;&lt;span class=&quot;nv&quot;&gt;$ &lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;sudo &lt;/span&gt;service apache2 start
+&lt;span class=&quot;nv&quot;&gt;$ &lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;sudo &lt;/span&gt;service mysql start&lt;/code&gt;&lt;/pre&gt;&lt;/figure&gt;
+
+&lt;p&gt;&lt;strong&gt;STEP 3:&lt;/strong&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;Clone Drupal8 to ‘drupal8’ folder in /var/www/html&lt;/strong&gt;&lt;/p&gt;
+
+&lt;figure class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-bash&quot; data-lang=&quot;bash&quot;&gt;&lt;span class=&quot;nv&quot;&gt;$ &lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;cd&lt;/span&gt; /var/www/html&lt;/code&gt;&lt;/pre&gt;&lt;/figure&gt;
+
+&lt;p&gt;use git to clone Drupal8.If you don’t have git you can install it by using&lt;/p&gt;
+
+&lt;figure class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-bash&quot; data-lang=&quot;bash&quot;&gt;&lt;span class=&quot;nv&quot;&gt;$ &lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;sudo &lt;/span&gt;apt-get &lt;span class=&quot;nb&quot;&gt;install &lt;/span&gt;git&lt;/code&gt;&lt;/pre&gt;&lt;/figure&gt;
+
+&lt;p&gt;You should then configure git.&lt;/p&gt;
+
+&lt;p&gt;When you are sure git is installed follow the command line below:&lt;/p&gt;
+
+&lt;figure class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-bash&quot; data-lang=&quot;bash&quot;&gt;&lt;span class=&quot;nv&quot;&gt;$ &lt;/span&gt;git clone &lt;span class=&quot;nt&quot;&gt;--branch&lt;/span&gt; 8.5.x http://git.drupal.org/project/drupal.git drupal8&lt;/code&gt;&lt;/pre&gt;&lt;/figure&gt;
+
+&lt;p&gt;Next, you need to give Read and Write permissions to ‘sites/default’ and all its subfolders which can be done by using chmod command.&lt;/p&gt;
+
+&lt;p&gt;There is one more step to follow to proceed, that is installing the composer.&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;Composer:&lt;/strong&gt;&lt;/p&gt;
+
+&lt;p&gt;The composer is a PHP dependency manager which will manage the dependencies on a project by the project basis.it will install required dependencies to make the project work and it does the installation on its own.You can use the below command to install composer.&lt;/p&gt;
+
+&lt;figure class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-bash&quot; data-lang=&quot;bash&quot;&gt;&lt;span class=&quot;nv&quot;&gt;$sudo&lt;/span&gt; apt-get &lt;span class=&quot;nb&quot;&gt;install &lt;/span&gt;curl php5-cli git&lt;/code&gt;&lt;/pre&gt;&lt;/figure&gt;
+
+&lt;p&gt;we are installing php5-cli to install composer and run it.When php5-client is installed you can move on to installing composer using curl.&lt;/p&gt;
+
+&lt;figure class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-bash&quot; data-lang=&quot;bash&quot;&gt;&lt;span class=&quot;nv&quot;&gt;$ &lt;/span&gt;curl &lt;span class=&quot;nt&quot;&gt;-sS&lt;/span&gt; https://getcomposer.org/installer | &lt;span class=&quot;nb&quot;&gt;sudo &lt;/span&gt;php &lt;span class=&quot;nt&quot;&gt;--&lt;/span&gt; &lt;span class=&quot;nt&quot;&gt;--install-dir&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;/usr/local/bin &lt;span class=&quot;nt&quot;&gt;--filename&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;composer &lt;/code&gt;&lt;/pre&gt;&lt;/figure&gt;
+
+&lt;p&gt;then test the installation by running  $ composer in your terminal and you will see the following output.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/posts/screenshot-from-2018-01-25-21-14-45-e1516895195271.png&quot; alt=&quot;Screenshot from 2018-01-25 21-14-45&quot; class=&quot;img-fluid&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;with all things set we can move on to the next step of building Drupal.&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;STEP 4:&lt;/strong&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;Building Drupal to localhost.&lt;/strong&gt;&lt;/p&gt;
+
+&lt;p&gt;Now move to drupal8 directory and install all the dependencies with the composer which can be done by the following commands&lt;/p&gt;
+
+&lt;figure class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-bash&quot; data-lang=&quot;bash&quot;&gt;&lt;span class=&quot;nv&quot;&gt;$ &lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;cd &lt;/span&gt;drupal8
+&lt;span class=&quot;nv&quot;&gt;$ &lt;/span&gt;composer update&lt;/code&gt;&lt;/pre&gt;&lt;/figure&gt;
+
+&lt;p&gt;When all dependencies got installed you should now copy ‘default.settings.php’ to ‘settings.php’ in the same directory.This file can be found in the default folder which we gave Read and Write permissions.(you can use ‘chmod’ command for it)&lt;/p&gt;
+
+&lt;p&gt;Now we can create a new database using PHPmyadmin.Open that in your favorite browser by&lt;/p&gt;
+
+&lt;p&gt;&lt;code class=&quot;highlighter-rouge&quot;&gt;localhost/phpmyadmin&lt;/code&gt;&lt;/p&gt;
+
+&lt;p&gt;By using the above link in the browser you will get a login page and once logged in with the credentials you gave during installing you can see something like this.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/posts/screenshot-from-2018-01-25-21-37-14-e1516896696706.png&quot; alt=&quot;screenshot-from-2018-01-25-21-37-14.png&quot; class=&quot;img-fluid&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;Click on ‘Databases’ in the top left corner and create a new database with name ‘drupal8’ and select UTF Unicode in the drop-down menu next to it.&lt;/p&gt;
+
+&lt;p&gt;Congratulations! you have created a database.Now to see your database use&lt;/p&gt;
+
+&lt;p&gt;&lt;code class=&quot;highlighter-rouge&quot;&gt;localhost/drupal8&lt;/code&gt;&lt;/p&gt;
+
+&lt;p&gt;You will get a page Shown as below fill in the details and you are done.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/img/posts/screenshot-from-2018-01-26-11-37-08-e1516947709770.png&quot; alt=&quot;screenshot-from-2018-01-26-11-37-08.png&quot; class=&quot;img-fluid&quot; /&gt;
+Congratulations you have setup drupal locally.&lt;/p&gt;</content><author><name>Shannu</name></author><category term="[&quot;Drupal&quot;, &quot;OSS&quot;]" /><summary type="html">About Drupal:</summary></entry></feed>
